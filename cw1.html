@@ -1,0 +1,420 @@
+<html>
+<head>
+<link rel="stylesheet" href="../../style.css">
+<title>CO3105/4105/7105 Assignment 1</title>
+</head>
+<body>
+<h1>CO3105/4105/7105 Assignment 1</h1>
+
+<p>
+Released Oct 25, 2021;
+<b>Deadline Monday Nov 15, 2021 5:00 pm</b>
+</p>
+<p>
+This assignment is worth 30% of the module mark.
+</p>
+<p>
+This assignment assesses your knowledge in pointers, dynamic
+memory management, and classes (including deep copy).
+You will need to know the materials from weeks 11 - 15.
+</p>
+<p>
+Clarifications and amendments may be announced on the 
+<a href="https://blackboard.le.ac.uk/webapps/blackboard/content/launchLink.jsp?course_id=_42692_1&content_id=_3195178_1&mode=cpview">
+Blackboard discussion forum</a> for this assignment. 
+<b>You are expected to read the forum.</b>
+</p>
+
+<h2>The Problem</h2>
+
+You will implement a data structure for storing a collection of 
+strings that supports efficient insertion, removal and search. We call the 
+data structure "BucketList" here.
+(Nope, that's not its real name, I made it up.)
+
+<h3>Overview of the data structure</h3>
+
+<p>
+From an object-oriented point of view, I should not prescribe how you should 
+implement the internal workings of the data structure as long as your
+implementation complies with the specified external interface;
+nevertheless, this is an assignment, so I am going to prescribe it.
+</p>
+<p>
+The primary part of the data structure is an array of pointers. Each entry 
+in the array, known as a <i>bucket</i>, is a pointer to the head of a 
+linked list. 
+Each string to be stored will be allocated (in a way to be described
+later) to a bucket. If multiple strings are allocated to the same bucket,
+each of them are stored in a different node in the linked list of that bucket.
+</p>
+<p>
+To faciliate the storage of strings into these linked lists, a
+<code>Node</code> class is defined as follows:
+<pre>
+class Node {
+  string s_; // string stored at this node
+  Node* next_; // pointer to next Node in the list
+  ...
+};
+</pre>
+</p>
+<p>
+The data structure is encapsulated in the <code>BucketList</code> class,
+defined as follows:
+<pre>
+class BucketList {
+  Node** buckets_; // pointer to an array of Node*
+  ...
+};
+</pre>
+The access point of this data structure is the <code>buckets_</code>
+variable, which is an array of <code>Node*</code>. (As you will see below, 
+this array will be dynamically resized, so instead of declaring it as 
+<code>Node*[]</code>, it is declared as <code>Node**</code>.)
+The size of this array is called the <i>capacity</i> of the 
+BucketList (which is not the same thing as the number of strings stored).
+The BucketList class is made a "friend" of the Node class. We will explain
+what this means later, but all you need to know now is that BucketList
+can access Node as if everything there is public.
+</p>
+<p>
+Here is a picture showing (conceptually) how seven strings C++, F#, abc,
+apple, banana, blue, c might be stored in a BucketList with capacity 10:
+</p>
+<img src="buckets.jpg">
+<p>
+Note that the strings themselves are never stored in the
+<code>buckets_</code> array itself. 
+Even if only one string is in a bucket, that bucket does not contain the
+string, but rather a pointer to a Node that stores the string.
+</p>
+
+<h3>Mash functions</h3>
+
+<p>
+The way a string is allocated to a bucket is given by a <i>mash function</i>
+(also a made-up name). This function takes any string and returns an integer. 
+There are many ways that such a 
+function can be defined, but for this assignment, we will use the 
+following. Consider a string
+s = s<sub>1</sub> s<sub>2</sub> s<sub>3</sub> ... s<sub>n</sub>
+with n characters.
+Let c<sub>i</sub> be the ASCII value corresponding to the character 
+s<sub>i</sub> (For example,
+A = 65, z = 122). Then the integer returned is given by the formula
+c<sub>1</sub> + 2*c<sub>2</sub> + 4*c<sub>3</sub> + ... + 
+2<sup>n-2</sup>*c<sub>n-1</sub> + 2<sup>n-1</sup>*c<sub>n</sub>.
+To work out which bucket the string should go to,
+this integer is further "restrained" to be between 0 and cap - 1,
+where cap is the current capacity (number of buckets).
+This is done by taking its
+remainder when divided by cap (i.e. the C++ % operator).
+</p>
+<p>
+For example, for the string "Hello", the mash value is
+72 + 2*101 + 4*108 + 8*108 + 16*111 = 3346, and if there are currently
+10 buckets, it should go to <code>buckets_[6]</code> since
+3346 % 10 = 6.
+</p>
+<p>
+We define an empty string to have a mash value of 0.
+</p>
+
+<h3>Supported operations</h3>
+
+You should implement the <code>Node</code> and <code>BucketList</code>
+classes so that BucketList supports the following functions:
+
+<ul>
+<li>
+Default constructor, that constructs a BucketList with an
+initial capacity (number of buckets) given by the constant
+INITIAL_CAP, and initialises each bucket to contain a null pointer.
+</li>
+<br/>
+<li>
+Destructor, that releases all memory used.
+</li>
+<br/>
+<li>
+Copy constructor and copy assignment functions, that perform a deep
+copy of another existing BucketList. 
+They should really be exact copies, i.e., not just the set of strings are
+identical but other states of the container, such as its capacity, should
+be the same. The copy assignment operator should release all memory
+of the existing BucketList that is being overwritten.
+</li>
+<br/>
+<li>
+<code>bool contains(const string& s)</code>: return true if the string s is in the 
+data structure, false otherwise.
+<b>This is (almost) done for you as an example; however,</b> you will need to
+modify the part with INITIAL_CAP, otherwise it
+would not work correctly once the data structure is resized (more on
+this later).
+</li>
+<br/>
+<li>
+<code>void insert(const string& s)</code>: add the string s to the data structure. 
+Before insertion, it should check whether resizing should happen first;
+this is described separately below. Then, the string
+should be added to the linked list of the bucket given by the mash value
+of the string. If the bucket is currently empty (has no other string), it
+should be added as the only node in a new linked list.
+If there are other strings already in the same bucket, it should be inserted
+into the linked list in increasing alphabetical order (i.e. the order
+used by C++ string comparisons) of the strings.
+If the string is already in the BucketList, do not make any changes.
+</li>
+<br/>
+<li>
+<code>void remove(const string& s)</code>: remove the string s from the data
+structure. You should remove the Node object containing that string from
+the relevant linked list. The memory must be properly released.
+If s is not in the BucketList, do not make any changes.
+</li>
+<br/>
+<li>
+<code>string tostring()</code>: returns a string that would give a "visual"
+representation of the contents of the BucketList. More precisely, there 
+should be one row per bucket. Each row begins with a number which is the
+index to the <code>buckets_</code> array (i.e. the mash value of the 
+strings in that bucket),
+followed by each string in the linked list of that bucket, in 
+alphabetical order.
+Every string (and the leading number) are separated by one space character.
+For example, the BucketList above will
+be printed like this:
+<pre>
+0 F# blue
+1
+2 banana
+3
+4
+5 C++
+6
+7
+8
+9 abc apple c
+</pre>
+The whole printout is stored in one string (which will contain 
+multiple lines, separated by the '\n' character) and returned to the caller;
+the function itself does not print anything to the screen.
+Please take care not to include any extra invisible whitespaces 
+(which will make you fail the test cases).
+</li>
+<br/>
+<li>
+<code>int h(const string& s)</code>: this is the mash function. It should return
+the value  <i>before</i> the % operator is applied to it.
+You can assume the string is "not too long" so the calculation will not
+result in numbers too large to fit inside a C++ int.
+</li>
+<br/>
+<li>
+<code>int getSize()</code>: return the number of strings currently stored
+in the data structure.
+</li>
+<br/>
+<li>
+<code>int getCap()</code>: return the current capacity of the data structure,
+i.e. the number of buckets in the array.
+</li>
+</ul>
+<!--
+<b>This function is meant to be difficult.</b>
+<b>This function is meant to be very difficult.</b> 
+-->
+
+<p>
+In all the above functions, you can assume the input string s
+only contains "normal", printable ASCII characters.
+</p>
+
+<h3>Resizing</h3>
+
+<p>
+The performance of a BucketList depends on whether many strings are in
+the same bucket (i.e. whether some linked lists are very long). Ideally,
+each bucket should not have more than one string, so none of insertion,
+removal or search require traversing any linked list: all it needs to do
+is to calculate the mash value of the string and jump to that bucket.
+However, as more and more strings are inserted, there will be "collisions"
+(where multiple strings go to the same bucket), and if some buckets have 
+many nodes (i.e. the linked list in that bucket is very long), all the 
+operations will become inefficient.
+</p>
+<p>The <i>load factor</i> is the ratio between the number of strings 
+currently stored and the capacity (number of buckets).
+The data structure should only allow a maximum load factor,
+defined in the MAX_LOAD_FACTOR constant.
+If an insertion would result in the maximum load factor being exceeded, the 
+BucketList should double its capacity first, before performing the insertion.
+By doubling, we mean you should create a new array with twice the capacity,
+and insert each existing string into the correct bucket in the new array.
+Note that the mash values will change and strings that are in the same
+bucket (same linked list) before resizing may be distributed to different
+buckets afterwards. The old array need to be cleaned up properly (memory released).
+</p>
+<p>
+For illustration, suppose we use the default INITIAL_CAP and MAX_LOAD_FACTOR
+values in the code, and then seven strings are inserted and stored as 
+depicted above. Then when another string "red" is inserted, the
+BucketList should look like this, as produced by the 
+<code>toString()</code> function:
+</p>
+<pre>
+0 F#
+1
+2
+3
+4
+5 C++
+6
+7
+8
+9 abc apple
+10 blue
+11
+12 banana
+13
+14
+15
+16 red
+17
+18
+19 c
+</pre>
+<!--
+<p>
+Note that this may not be the only correct representation: previous insertions/
+removals may have changed the capacity of the data structure and so
+the table may have more buckets and strings allocated differently.
+</p>
+-->
+<p>
+Note that resizing only happens before insertion. If the data structure
+becomes "too empty" due to many removals, "shrinking" will not take place.
+</p>
+<!--
+<p>
+Please refer to the BucketList.h and BucketList.cpp files
+for the exact specification of what each function should do.
+</p>
+-->
+
+<h3>What you can and cannot do</h3>
+
+<p>
+You must not change the existing public interface of the classes, and
+you must not change the existing private data members of the classes.
+You are allowed to add public or private member functions, or private
+data members, should you want to.
+</p>
+<p>
+You must not use containers from the Standard Template Library (STL),
+nor smart pointers. (Both of these will be covered later in the module.)
+</p>
+
+<h2>Files Provided</h2>
+
+<ul>
+<li><a href="BucketList.h">BucketList.h</a></li>
+<li><a href="BucketList.cpp">BucketList.cpp</a></li>
+</ul>
+These are the only two files you need to modify/submit. All code written
+by you should be in there.
+<ul>
+<li><a href="main.cpp">main.cpp</a></li>
+</ul>
+This is just an example that illustrates how the 
+functions can be called.
+<ul>
+<li><a href="BucketListTester.h">BucketListTester.h</a></li>
+<li><a href="BucketListTester.cpp">BucketListTester.cpp</a></li>
+<li><a href="BucketListTesterMain.cpp">BucketListTesterMain.cpp</a></li>
+</ul>
+They are used for the execution testing part (see the next section).
+<ul>
+<li><a href="makefile">makefile</a></li>
+</ul>
+This is a makefile that will compile the main executable and the test
+suite executable.
+
+<h2>Marking Criteria and Test Suite</h2>
+
+<p>
+See <a href="ms.html">this separate page</a> for the marking criteria.
+</p>
+<p>
+To use the test suite (which is used in the execution testing part of the 
+marking), simply type "make" in a linux terminal (with all 
+the above files in the same folder). It will (assuming you did not break
+BucketList.h or BucketList.cpp) produce a BucketListTesterMain executable file. Run the 
+program by typing
+<pre>
+./BucketListTesterMain a
+</pre>
+or
+<pre>
+./BucketListTesterMain a b c d
+</pre>
+which runs a single test case or multiple test cases respectively. 
+We will also demonstrate its use in class. 
+</p>
+<p>
+The given BucketList.h and BucketList.cpp files (without your contributions)
+are already compilable with the test suite. 
+It might even pass a few test cases. So, whatever you do, please don't 
+break them...
+</p>
+<p>
+The test suite may not cover all corner cases, so passing all test
+cases does not guarantee your program is 100% correct.
+Also, unfortunately we cannot isolate the testing of the various functions.
+For example to pass those test cases meant for <code>toString()</code> you 
+need to also implement <code>insert()</code> at least partially correctly.
+</p>
+
+<h2>Submission Instructions</h2>
+
+<p>
+Submit your completed work on Blackboard ("Assessment and Feedback" on the 
+left, then "Assignment 1").
+</p>
+<p>
+<b>Submit only the files BucketList.h and BucketList.cpp.</b>
+Just upload them as two separate files with those exact names. 
+DO NOT change their names including upper/lowercase, 
+DO NOT change the extension to .txt or .cpp.txt or some such,
+DO NOT put them in a Word or pdf file (yes, someone actually did that),
+DO NOT put them in a zip archive,
+and DO NOT upload the entire project folder of whatever IDE you are using.
+Any such problems will incur a penalty.
+</p>
+<p>
+While you may want to change the main.cpp file for your own testing, 
+it is not part of the submission. The test suites and the makefiles also
+should not be submitted. If you submit them, they will be ignored and I
+will use my own version for testing.
+</p>
+<p>
+This is an <b>individual assignment</b>, and collaboration is not permitted.
+Plagiarism will be treated strictly according to standard university and
+departmental procedures.
+Your submissions will be sent to a plagiarism detection service
+(<a href="https://theory.stanford.edu/~aiken/moss/">MOSS</a>).
+</p>
+<p>
+In line with university policy, marking will be done anonymously.
+Only the Blackboard-supplied userid / student number will be visible in
+marking.
+</p>
+<p>
+For the above two reasons, do not include your name, userid, student 
+number, or any other personally identifiable information
+in your programs.
+</p>
+</body>
+</html>
