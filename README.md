@@ -14,6 +14,10 @@ Obviously, this is actually a hashtable. More precisely, it uses separate chaini
 
 This assignment (and some slight variations made for reassessment purposes) elicited some interesting cheating submissions:
 
-- This one is a work of art. Two students decided to put my given starting .h file to some autorephrasing website... something normally only done to reports to evade Turnitin, but what do I know. The "class" now becomes "elegance" or "beauty" (think "classy"). Their code are in the "rephraser" folder.
+- This one is a work of art. In a resubmission attempt, two students decided to put my given starting .h file to some autorephrasing website... something normally only done to reports to evade Turnitin, but what do I know. The keyword "class" now becomes "elegance" or "beauty" (think "classy"). Their code are in the "rephraser" folder.
+
+- One of the two students above (fa893, not their real id), in the original (first-attempt) submission, copied everything in https://www.geeksforgeeks.org/bucket-sort-2/, because from "bucket" google must have told them "bucket sort".
+
+- Someone decided to copy this entire file: https://github.com/stellar/stellar-core/blob/master/src/bucket/BucketList.h, simply because it has the same. (It does some completely different things.)
 
 [more to be added]
