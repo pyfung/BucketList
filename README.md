@@ -18,6 +18,6 @@ This assignment (and some slight variations made for reassessment purposes) elic
 
 - One of the two students above (fa893, not their real id), in the original (first-attempt) submission, copied everything in https://www.geeksforgeeks.org/bucket-sort-2/, because from "bucket" google must have told them "bucket sort".
 
-- Someone decided to copy this entire file: https://github.com/stellar/stellar-core/blob/master/src/bucket/BucketList.h, simply because it has the same. (It does some completely different things.)
+- Someone decided to copy this entire file: https://github.com/stellar/stellar-core/blob/master/src/bucket/BucketList.h, simply because it has the same name. (It does some completely different things.)
 
 [more to be added]
